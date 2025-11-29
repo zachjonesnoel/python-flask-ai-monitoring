@@ -1,13 +1,6 @@
 What do you know about New Relic?
-Who invented New Relic?
-Where does the name New Relic come from?
-What are the unique selling points of New Relic?
-What are the most famous attractions in Bengaluru/India?
-When should WebAssembly on the server-side be considered?
-Tell me more about .NET Aspire
-Give me recommendations for filter coffee in Bengluru
-What's Bengaluru known for?
-Tell me about APIDays conference.
-How do I plan for APIDays India conference?
 What is AI monitoring?
 Why do I need AI monitoring?
+Tell me about AWS reInvent
+What should I plan for at AWS reInvent
+What to expect from AWS reInvent Keynotes
