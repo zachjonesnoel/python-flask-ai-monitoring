@@ -32,8 +32,14 @@ model_id = os.environ["MODEL"]
 app = Flask(__name__, template_folder="../templates",
             static_folder="../static")
 
-# taking the input from the user and returning the response from Gemini
-
+prompts = []
+try:
+    with open("../prompts.txt", "r") as file:
+        # Skip lines that are empty or comments (starting with //)
+        prompts = [line.strip() for line in file if line.strip()
+                   and not line.startswith("//")]
+except Exception as e:
+    print(f"Error reading prompts file: {e}")
 
 def chatCompletion(prompt):
     print("prompt: "+prompt)
@@ -103,16 +109,29 @@ def chatCompletion(prompt):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    # Get available models
+    available_models = [
+        "meta.llama3-8b-instruct-v1:0",
+        "mistral.mistral-7b-instruct-v0:2",
+    ]
+    default_model = os.environ.get("MODEL", "meta.llama3-8b-instruct-v1:0")
+    return render_template("index.html", models=available_models, selected_model=default_model)
+
 
 
 @app.route("/prompt", methods=["POST"])
 def prompt():
     input_prompt = request.form.get("input")
+    selected_model = request.form.get("model")
+    if selected_model:
+        model_id = selected_model
     output_prompt = chatCompletion(input_prompt)
     html_output = markdown.markdown(output_prompt)
-    return render_template("index.html", output=html_output)
-
+    available_models = [
+        "meta.llama3-8b-instruct-v1:0",
+        "mistral.mistral-7b-instruct-v0:2",
+    ]
+    return render_template("index.html", output=html_output, models=available_models, selected_model=model_id)
 
 # make the server publicly available via port 5004
 # flask --app levelsix.py run --host 0.0.0.0 --port 5004
