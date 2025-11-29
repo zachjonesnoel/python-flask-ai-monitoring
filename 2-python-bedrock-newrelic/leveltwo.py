@@ -131,7 +131,8 @@ def prompt():
         "meta.llama3-8b-instruct-v1:0",
         "mistral.mistral-7b-instruct-v0:2",
     ]
-    return render_template("index.html", output=html_output, models=available_models, selected_model=model_id)
+    default_model = os.environ.get("MODEL", "meta.llama3-8b-instruct-v1:0")
+    return render_template("index.html", output=html_output, models=available_models, selected_model=default_model)
 
 # make the server publicly available via port 5004
 # flask --app levelsix.py run --host 0.0.0.0 --port 5004
