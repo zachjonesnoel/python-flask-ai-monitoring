@@ -33,6 +33,10 @@ app = Flask(__name__, template_folder="../templates",
             static_folder="../static")
 
 prompts = []
+available_models = [
+        "meta.llama3-8b-instruct-v1:0",
+        "mistral.mistral-7b-instruct-v0:2"
+]
 try:
     with open("../prompts.txt", "r") as file:
         # Skip lines that are empty or comments (starting with //)
