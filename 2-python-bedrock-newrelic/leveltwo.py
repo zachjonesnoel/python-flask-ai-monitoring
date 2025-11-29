@@ -11,10 +11,12 @@ import markdown
 # newrelic.agent.initialize('newrelic.ini')
 
 # Create a Bedrock Runtime client in the AWS Region you want to use.
-client = boto3.client("bedrock-runtime", region_name="us-east-1")
+AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY")
+AWS_SECRET_KEY = os.environ.get("AWS_SECRET_KEY")
+client = boto3.client("bedrock-runtime", region_name="us-east-1", aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
 
 # Set the model ID, e.g., Titan Text Premier.¨
-model_id = "amazon.titan-text-lite-v1"
+# model_id = "amazon.titan-text-lite-v1"
 # model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
 # model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 # model_id = "anthropic.claude-v2"
@@ -25,6 +27,7 @@ model_id = "amazon.titan-text-lite-v1"
 # model_id = "mistral.mistral-7b-instruct-v0:2"
 # model_id = "deepseek.r1-v1:0"
 # model_id="amazon.nova-micro-v1:0"
+model_id = os.environ["MODEL"]
 
 app = Flask(__name__, template_folder="../templates",
             static_folder="../static")
@@ -35,131 +38,68 @@ app = Flask(__name__, template_folder="../templates",
 def chatCompletion(prompt):
     print("prompt: "+prompt)
     # Format the request payload using the model's native structure.
-    if model_id == "amazon.titan-text-lite-v1":
-        native_request = {
-            "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 512,
-                "temperature": 0.5,
-            },
-        }
-    elif model_id == "anthropic.claude-3-sonnet-20240229-v1:0" or model_id == "anthropic.claude-3-5-sonnet-20240620-v1:0" or model_id == "anthropic.claude-v2":
-        # "anthropic.claude-3-haiku-20240307-v1:0"
-        native_request = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 512,
-            "temperature": 0.5,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": prompt}],
-                }
-            ],
-        }
-    else:
-        native_request = {
-            "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 512,
-                "temperature": 0.5,
-            },
-        }
-        native_request3 = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 512,
-            "temperature": 0.5,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": prompt}],
-                }
-            ],
-        }
-        native_request4 = {
-            "max_tokens": 512,
-            "temperature": 0.5,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": prompt}],
-                }
-            ],
-        }
-        # amazon.nova-micro-v1:0
-        native_request5 = [
-            {
-                "role": "user",
-                "content": [{"text": prompt}],
-            }
-        ]
-        native_request6 = [
-            {
-                "role": "user",
-                "content": [{"text": prompt}],
-            }
-        ]
-        conversation = [
-            {
-                "role": "user",
-                "content": [{"text": prompt}],
-            }
-        ]
-
-    # Convert the native request to JSON.
-    request = json.dumps(native_request)
-
     try:
-        # Invoke the model with the request.
-        if model_id == "amazon.titan-text-lite-v1" or model_id == "anthropic.claude-3-sonnet-20240229-v1:0" or model_id == "anthropic.claude-3-5-sonnet-20240620-v1:0" or model_id == "anthropic.claude-v2":
-            response = client.invoke_model(modelId=model_id, body=request)
+        if model_id == "amazon.titan-text-lite-v1":
+            native_request = json.dumps({
+                "inputText": prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": 512,
+                    "temperature": 0.5,
+                },
+            })
+            response = client.invoke_model(modelId=model_id, body=native_request)
+            model_response = json.loads(response["body"].read())
+            response_text = model_response["content"][0]["text"]
+        elif model_id == "mistral.mistral-7b-instruct-v0:2":
+            formatted_prompt = f"""<s>[INST]{prompt} [/INST]"""
+            native_request = json.dumps({
+                "prompt":  formatted_prompt,
+                "max_tokens": 400,
+                "temperature": 0.7,
+                "top_p": 0.7,
+                "top_k": 50
+            })
+            response = client.invoke_model(modelId=model_id, body=native_request)
+            print("raw response: "+str(response))
+            model_response = json.loads(response["body"].read())
+            print("model response: "+str(model_response))
+            response_text = model_response["outputs"][0]["text"] 
+        elif model_id == 'meta.llama3-8b-instruct-v1:0':
+            formatted_prompt = f"""
+                <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+                {prompt}
+                <|eot_id|>
+                <|start_header_id|>assistant<|end_header_id|>
+                """
+            response = client.invoke_model(
+                modelId=model_id,
+                body=json.dumps({
+                    "prompt": formatted_prompt,
+                    "max_gen_len": 512,
+                    "temperature": 0.5,
+                })
+            )
+            model_response = json.loads(response["body"].read())
+            print("model response: "+str(model_response))
+            response_text = model_response["generation"]
         else:
-            response = client.invoke_model(modelId=model_id, body=request)
-
-            # response = client.converse(modelId=model_id, messages=conversation)
-
-            # response = client.converse(
-            #    modelId="anthropic.claude-v2",
-            #    messages=conversation,
-            #    inferenceConfig={"maxTokens":2048,"stopSequences":["\n\nHuman:"],"temperature":1,"topP":1},
-            #    additionalModelRequestFields={"top_k":250}
-            # )
-
-            # nova models
-            # Send the message to the model, using a basic inference configuration.
-            # amazon.nova-micro-v1:0
-            # response = client.converse(
-            #    modelId=model_id,
-            #    messages=conversation,
-            #    inferenceConfig={"maxTokens": 512, "temperature": 0.5, "topP": 0.9},
-            # )
-            # Extract and print the response text.
-            # response_text = response["output"]["message"]["content"][0]["text"]
+            native_request = json.dumps({
+                "inputText": prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": 512,
+                    "temperature": 0.5,
+                },
+            })
+            response = client.invoke_model(modelId=model_id, body=native_request)
+            # Decode the response body.
+            model_response = json.loads(response["body"].read())
+            response_text = model_response["content"][0]["text"]
 
     except (ClientError, Exception) as e:
         print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
         exit(1)
-
-    # Decode the response body.
-    # print(f"response: {response}")
-    model_response = json.loads(response["body"].read())
-
-    # Extract and print the response text.
-
-    # "amazon.titan-text-lite-v1"
-    if model_id == "amazon.titan-text-lite-v1":
-        response_text = model_response["results"][0]["outputText"]
-    else:
-        # "anthropic.claude-3-haiku-20240307-v1:0"
-        response_text = model_response["content"][0]["text"]
-        # response_text = model_response["results"][0]["outputText"]
-
-        # response_text = response["output"]["message"]["content"][0]["text"]
-        # response_text = response["output"]["message"]["content"][0]["text"]
-
     print(f"response: {response_text}")
-
     return response_text
-
 
 @app.route("/")
 def home():
